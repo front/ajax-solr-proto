@@ -6,6 +6,11 @@
 	<link rel="stylesheet" href="css/style.css">
 	
 	<script src="http://code.jquery.com/jquery-2.0.2.min.js"></script>
+	
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.24/jquery-ui.min.js"></script>
+	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.24/themes/smoothness/jquery-ui.css">
+	
 	<script src="js/core/Core.js"></script>
 	<script src="js/core/AbstractManager.js"></script>
 	<script src="js/managers/Manager.jquery.js"></script>
@@ -23,6 +28,9 @@
 <script type="text/javascript">
 
 var Manager;
+
+var FIELDS = ['tm_title'];
+
 (function ($) {
 	$(function () {
 		Manager = new AjaxSolr.Manager({
@@ -30,7 +38,7 @@ var Manager;
 			solrUrl: 'http://eu1.websolr.com/solr/26ef27d03f3/'
 		});
 		
-		AjaxSolr.TextWidget = AjaxSolr.AbstractTextWidget.extend({
+		/*AjaxSolr.TextWidget = AjaxSolr.AbstractTextWidget.extend({
 			init: function () {
 				var self = this;
 				$(this.target).find('input').bind('keydown', function(e) {
@@ -51,7 +59,72 @@ var Manager;
 		Manager.addWidget(new AjaxSolr.TextWidget({
 			id: 'text',
 			target: '#search'
+		}));*/
+		
+		
+		AjaxSolr.AutocompleteWidget = AjaxSolr.AbstractTextWidget.extend({
+		  afterRequest: function () {
+			$(this.target).find('input').unbind().removeData('events').val('');
+
+			var self = this;
+
+			var callback = function (response) {
+			  var list = [];
+			  for (var i = 0; i < self.fields.length; i++) {
+				var field = self.fields[i];
+				for (var facet in response.facet_counts.facet_fields[field]) {
+				  list.push({
+					field: field,
+					value: facet,
+					label: facet + ' (' + response.facet_counts.facet_fields[field][facet] + ') - ' + field
+				  });
+				}
+			  }
+
+			  self.requestSent = false;
+			  $(self.target).find('input').autocomplete('destroy').autocomplete({
+				source: list,
+				select: function(event, ui) {
+				  if (ui.item) {
+					self.requestSent = true;
+					if (self.manager.store.addByValue('fq', ui.item.field + ':' + AjaxSolr.Parameter.escapeValue(ui.item.value))) {
+					  self.doRequest();
+					}
+				  }
+				}
+			  });
+
+			  // This has lower priority so that requestSent is set.
+			  $(self.target).find('input').bind('keydown', function(e) {
+				if (self.requestSent === false && e.which == 13) {
+				  var value = $(this).val();
+				  if (value/* && self.set(value)*/) {
+					self.manager.store.addByValue('fq', FIELDS[0] + ':' + value);
+					self.manager.store.addByValue('q', '*:*');
+					self.doRequest();
+				  }
+				}
+			  });
+			} // end callback
+
+			var params = [ 'rows=0&facet=true&facet.limit=-1&facet.mincount=1&json.nl=map' ];
+			for (var i = 0; i < this.fields.length; i++) {
+			  params.push('facet.field=' + this.fields[i]);
+			}
+			var values = this.manager.store.values('fq');
+			for (var i = 0; i < values.length; i++) {
+			  params.push('fq=' + encodeURIComponent(values[i]));
+			}
+			params.push('q=' + this.manager.store.get('q').val());
+			$.getJSON(this.manager.solrUrl + 'select?' + params.join('&') + '&wt=json&json.wrf=?', {}, callback);
+		  }
+		});
+		Manager.addWidget(new AjaxSolr.AutocompleteWidget({
+			id: 'text',
+			target: '#search',
+			fields: FIELDS
 		}));
+		
 		
 		AjaxSolr.ResultWidget = AjaxSolr.AbstractWidget.extend({
 			init: function () {
