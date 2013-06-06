@@ -169,6 +169,9 @@ AjaxSolr.Parameter.escapeValue = function (value) {
   if (value.match(/[ :\/"]/) && !value.match(/[\[\{]\S+ TO \S+[\]\}]/) && !value.match(/^["\(].*["\)]$/)) {
     return '"' + value.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
   }
+  if (value.match(/[!]/)) {
+	return value.replace(/[!]/g, '')
+  }
   return value;
 }
 

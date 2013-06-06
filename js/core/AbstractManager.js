@@ -104,7 +104,7 @@ AjaxSolr.AbstractManager = AjaxSolr.Class.extend(
     if (servlet === undefined) {
       servlet = this.servlet;
     }
-
+	
     this.store.save();
 
     for (var widgetId in this.widgets) {
@@ -112,7 +112,6 @@ AjaxSolr.AbstractManager = AjaxSolr.Class.extend(
     }
 
     this.executeRequest(servlet);
-	this.store.remove('fq');
   },
 
   /**
