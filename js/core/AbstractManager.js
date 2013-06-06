@@ -112,6 +112,7 @@ AjaxSolr.AbstractManager = AjaxSolr.Class.extend(
     }
 
     this.executeRequest(servlet);
+	this.store.remove('fq');
   },
 
   /**
