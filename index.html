@@ -1,0 +1,178 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+	
+	<link rel="stylesheet" href="css/style.css">
+	
+	<script src="http://code.jquery.com/jquery-2.0.2.min.js"></script>
+	<script src="js/core/Core.js"></script>
+	<script src="js/core/AbstractManager.js"></script>
+	<script src="js/managers/Manager.jquery.js"></script>
+	
+	<script src="js/core/Parameter.js"></script>
+	<script src="js/core/ParameterStore.js"></script>
+	<script src="js/core/AbstractWidget.js"></script>
+	<script src="js/core/AbstractTextWidget.js"></script>
+	<script src="js/widgets/ResultWidget.js"></script>
+	<script src="js/widgets/jquery/PagerWidget.js"></script>
+</head>
+
+<body>
+
+<script type="text/javascript">
+
+var Manager;
+(function ($) {
+	$(function () {
+		Manager = new AjaxSolr.Manager({
+			//solrUrl: 'http://evolvingweb.ca/solr/reuters/'
+			solrUrl: 'http://eu1.websolr.com/solr/26ef27d03f3/'
+		});
+		
+		AjaxSolr.TextWidget = AjaxSolr.AbstractTextWidget.extend({
+			init: function () {
+				var self = this;
+				$(this.target).find('input').bind('keydown', function(e) {
+					if (e.which == 13) {
+						var value = $(this).val();
+						if (value && self.set(value)) {
+							self.doRequest();
+						}
+					}
+				});
+			},
+
+			afterRequest: function () {
+				$(this.target).find('input').val('');
+			}
+		});
+		
+		Manager.addWidget(new AjaxSolr.TextWidget({
+			id: 'text',
+			target: '#search'
+		}));
+		
+		AjaxSolr.ResultWidget = AjaxSolr.AbstractWidget.extend({
+			init: function () {
+				$(document).on('click', 'a.more', function () {
+					var $this = $(this),
+					span = $this.parent().find('span');
+
+					if (span.is(':visible')) {
+						span.hide();
+						$this.text('more');
+					} else {
+						span.show();
+						$this.text('less');
+					}
+
+					return false;
+				});
+			},
+
+			beforeRequest: function () {
+				$(this.target).html($('<img>').attr('src', 'images/ajax_loader.gif'));
+			},
+			
+			afterRequest: function () {
+				$(this.target).empty();
+				for (var i = 0, l = this.manager.response.response.docs.length; i < l; i++) {
+					var doc = this.manager.response.response.docs[i];
+					$(this.target).append(this.template(doc));
+				}
+			},
+
+			template: function (doc) {
+				var snippet = '';
+				var bodyText = doc["tm_body:value"][0];
+				if (bodyText.length > 300) {
+					snippet += doc.ds_created + ' ' + bodyText.substring(0, 300);
+					snippet += '<span style="display:none;">' + bodyText.substring(300);
+					snippet += '</span> <a href="#" class="more">more</a>';
+				} else {
+					snippet += doc.ds_created + ' ' + bodyText;
+				}
+
+				var output = '<div><h2>' + doc.tm_title + '</h2>';
+				output += '<p id="links_' + doc.id + '" class="links"></p>';
+				output += '<p>' + snippet + '</p></div>';
+				return output;
+			}
+		});
+		
+		Manager.addWidget(new AjaxSolr.ResultWidget({
+			id: 'result',
+			target: '#docs'
+		}));
+		
+		Manager.init();
+		Manager.store.addByValue('q', '*:*');
+		
+		/*
+		var params = {
+			face: true,
+			'facet.field': [ 'tm_title' ],
+			'json.nl': 'map'
+		};
+		for (var name in params) {
+			Manager.store.addByValue(name, params[name]);
+		}
+		*/
+		
+		Manager.doRequest();
+	});
+	
+})(jQuery);
+
+</script>
+
+<div id="wrap"> 
+    <div id="header">
+      <h1>AJAX Solr Demonstration</h1>
+      <h2>Browse Reuters business news from 1987</h2>
+    </div>
+
+    <div class="right">
+      <div id="result">
+        <div id="navigation">
+          <ul id="pager"></ul>
+          <div id="pager-header"></div>
+        </div>
+        <div id="docs"></div>
+      </div>
+    </div>
+
+    <div class="left">
+      <h2>Current Selection</h2>
+      <ul id="selection"></ul>
+
+      <h2>Search</h2>
+      <span id="search_help">(press ESC to close suggestions)</span>
+      <ul id="search">
+        <input type="text" id="query" name="query" autocomplete="off">
+      </ul>
+
+      <h2>Top Topics</h2>
+      <div class="tagcloud" id="topics"></div>
+
+      <h2>Top Organisations</h2>
+      <div class="tagcloud" id="organisations"></div>
+
+      <h2>Top Exchanges</h2>
+      <div class="tagcloud" id="exchanges"></div>
+
+      <h2>By Country</h2>
+      <div id="countries"></div>
+      <div id="preview"></div>
+
+      <h2>By Date</h2>
+      <div id="calendar"></div>
+
+      <div class="clear"></div>
+    </div>
+    <div class="clear"></div>
+  </div>  
+
+</body>
+</html>
