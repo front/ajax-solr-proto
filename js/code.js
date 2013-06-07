@@ -86,10 +86,8 @@ var FIELDS = ['tm_title'];
                     // This has lower priority so that requestSent is set.
                     $(self.target).find('input').bind('keydown', function(e) {
                         if (self.requestSent === false && e.which == 13) {
-                            var value = $(this).val();
-                            if (value /* && self.set(value)*/ ) {
-                                self.manager.store.addByValue('fq', FIELDS[0] + ':' + value);
-                                self.manager.store.addByValue('q', '*:*');
+                            var value = AjaxSolr.Parameter.escapeValue( $(this).val() );
+                            if (value && self.set(value) ) {
                                 self.doRequest();
                             }
                         }
